@@ -38,12 +38,15 @@ public class OtonomoGrouped {
      * @return
      */
     private Dataset<Row> addNodeID(Dataset<Row> nodeDataset, long startID) {
+        // add increasing id, but don't consecutive
         nodeDataset = nodeDataset.withColumn("monotonically_increasing_id", monotonically_increasing_id());
+        // generation consecutive id from 1
         WindowSpec window = Window.orderBy(col("monotonically_increasing_id"));
         nodeDataset = nodeDataset.withColumn("increasing_id", row_number().over(window));
+        // generation node id from startID
         nodeDataset = nodeDataset.withColumn("node_id", nodeDataset.col("increasing_id").$plus(startID - 1));
+        // drop temporary columns
         nodeDataset = nodeDataset.drop(col("monotonically_increasing_id")).drop("increasing_id");
-        nodeDataset.show(false);
         return nodeDataset;
     }
 
