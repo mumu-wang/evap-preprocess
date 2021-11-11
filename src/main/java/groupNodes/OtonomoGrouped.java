@@ -42,9 +42,8 @@ public class OtonomoGrouped implements Serializable {
         Dataset<Row> csvData = sparkSession.read().format("csv").option("header", "true").load(inputPath);
         // 3.add node id
         Dataset<Row> nodeDataset = addNodeID(csvData, startID);
-
+        // filter nodes by geometry
         nodeDataset = filterNodesByName(csvData, filterName);
-
         // 4.group node by vehicle id
         nodeDataset = groupDataByVehicle(nodeDataset, splitSize);
         // 5.write result file
@@ -80,16 +79,16 @@ public class OtonomoGrouped implements Serializable {
         return nodeDataset.repartition(splitSize, col(VEHICLE_ID));
     }
 
-    private Dataset<Row> filterDataByGeom(Dataset<Row> nodeDataset, Geometry polygon) {
-        nodeDataset = nodeDataset.filter(x -> {
-            String lat = (String) x.get(x.fieldIndex(LAT_FIELD));
-            String lon = (String) x.get(x.fieldIndex(LON_FIELD));
-            if (lat != null && lon != null && isValidLatLon(lat, lon)) {
-                Point point = new GeometryFactory(new PrecisionModel(), 4236).createPoint(new Coordinate(Double.parseDouble(lon), Double.parseDouble(lat)));
-                return polygon.contains(point);
-            }
-            return false;
-        });
+    /**
+     * @param nodeDataset
+     * @param filterName, filter name in config file
+     * @return
+     */
+    private Dataset<Row> filterNodesByName(Dataset<Row> nodeDataset, String filterName) {
+        if (StringUtils.isNotEmpty(filterName)) {
+            Geometry geometry = getGeometryFromConfigByName(filterName);
+            return filterDataByGeom(nodeDataset, geometry);
+        }
         return nodeDataset;
     }
 
@@ -101,15 +100,7 @@ public class OtonomoGrouped implements Serializable {
             WKTReader wktReader = new WKTReader();
             return wktReader.read(boundary);
         }
-        return new GeometryFactory().createEmpty(2);
-    }
-
-    private Dataset<Row> filterNodesByName(Dataset<Row> nodeDataset, String filterName) {
-        if (StringUtils.isNotEmpty(filterName)) {
-            Geometry geometry = getGeometryFromConfigByName(filterName);
-            return filterDataByGeom(nodeDataset, geometry);
-        }
-        return nodeDataset;
+        return new GeometryFactory().createEmpty(0);
     }
 
     private boolean isValidLatLon(String lat, String lon) {
@@ -122,6 +113,18 @@ public class OtonomoGrouped implements Serializable {
         }
     }
 
+    private Dataset<Row> filterDataByGeom(Dataset<Row> nodeDataset, Geometry polygon) {
+        nodeDataset = nodeDataset.filter(x -> {
+            String lat = (String) x.get(x.fieldIndex(LAT_FIELD));
+            String lon = (String) x.get(x.fieldIndex(LON_FIELD));
+            if (lat != null && lon != null && isValidLatLon(lat, lon)) {
+                Point point = new GeometryFactory(new PrecisionModel(), 4236).createPoint(new Coordinate(Double.parseDouble(lon), Double.parseDouble(lat)));
+                return polygon.contains(point);
+            }
+            return false;
+        });
+        return nodeDataset;
+    }
 
     public static void main(String[] args) {
 
