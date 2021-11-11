@@ -3,8 +3,9 @@
 This progress is used to preprocess vehicle data for EVAP project in TN. 
 
 It could
-1. add unique node ID with special number by user provided
+1. add unique consecutive node ID with special start number by user provided
 2. group data by vehicle
+3. filter nodes by geometry
 
 command example:
 

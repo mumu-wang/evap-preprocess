@@ -6,12 +6,10 @@ public class OtonomoGroupedTest {
 
     @Test
     public void handleOtonomoData() {
-        OtonomoGrouped grouped = new OtonomoGrouped();
-        grouped.handleOtonomoData(
+        OtonomoGrouped grouped = new OtonomoGrouped(
                 "file:///d:/ev_data/otonomo_raw_sample_data/*.csv",
-                "file:///d:/ev_data/otonomo_raw_sample_data_split",
-                100,
-                3);
+                "file:///d:/ev_data/otonomo_raw_sample_data_split");
+        grouped.handleOtonomoData(100, 3, "california");
 
     }
 }
