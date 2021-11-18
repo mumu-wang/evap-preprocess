@@ -4,6 +4,7 @@ import boundary.BoundariesConfig;
 import boundary.BoundariesProfile;
 import lombok.SneakyThrows;
 import org.apache.commons.lang.StringUtils;
+import org.apache.spark.storage.StorageLevel;
 import org.locationtech.jts.geom.*;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.expressions.Window;
@@ -27,6 +28,7 @@ public class OtonomoGrouped implements Serializable {
     private static final String VEHICLE_ID = "vehicle__identification__otonomo_id";
     private static final String LAT_FIELD = "location__latitude__value";
     private static final String LON_FIELD = "location__longitude__value";
+    private static final String LOCATION_CITY_NAME_FILED = "location__city__name";
     private final String inputPath;
     private final String outputPath;
 
@@ -35,21 +37,25 @@ public class OtonomoGrouped implements Serializable {
         this.outputPath = outputPath;
     }
 
-    public void handleOtonomoData(long startID, int splitSize, String filterName) {
+    public long handleOtonomoData(long startID, int splitSize, String filterName) {
         // 1.active spark environment
         SparkSession sparkSession = SparkSession.builder().master("local[*]").appName("handle data").getOrCreate();
         // 2.read otonomo csv file
         Dataset<Row> csvData = sparkSession.read().format("csv").option("header", "true").load(inputPath);
-        // 3.add node id
-        Dataset<Row> nodeDataset = addNodeID(csvData, startID);
-        // filter nodes by geometry
-        nodeDataset = filterNodesByName(csvData, filterName);
-        // 4.group node by vehicle id
+        // 3.1 filter nodes by geometry
+//        Dataset<Row> nodeDataset = filterNodesByGeometry(csvData, filterName);
+        Dataset<Row> nodeDataset = filerNodesByCityName(csvData, filterName);
+        // 3.2 add node id
+        nodeDataset = addNodeID(nodeDataset, startID);
+        // 3.3 group node by vehicle id
         nodeDataset = groupDataByVehicle(nodeDataset, splitSize);
-        // 5.write result file
+        // 4.write result file
+        nodeDataset.persist(StorageLevel.DISK_ONLY());
         nodeDataset.write().mode(SaveMode.Overwrite).option("header", "true").csv(outputPath);
-        // 6.deactive spark environment
+        long nodeSize = nodeDataset.count();
+        // 5.deactive spark environment
         sparkSession.close();
+        return nodeSize;
     }
 
     /**
@@ -84,7 +90,7 @@ public class OtonomoGrouped implements Serializable {
      * @param filterName, filter name in config file
      * @return
      */
-    private Dataset<Row> filterNodesByName(Dataset<Row> nodeDataset, String filterName) {
+    private Dataset<Row> filterNodesByGeometry(Dataset<Row> nodeDataset, String filterName) {
         if (StringUtils.isNotEmpty(filterName)) {
             Geometry geometry = getGeometryFromConfigByName(filterName);
             return filterDataByGeom(nodeDataset, geometry);
@@ -92,11 +98,19 @@ public class OtonomoGrouped implements Serializable {
         return nodeDataset;
     }
 
+    private Dataset<Row> filerNodesByCityName(Dataset<Row> nodeDataset, String cityName){
+        nodeDataset = nodeDataset.filter(x -> {
+            String locationCity = StringUtils.strip((String) x.get(x.fieldIndex(LOCATION_CITY_NAME_FILED)));
+            return StringUtils.endsWithIgnoreCase(locationCity, cityName);
+        });
+        return nodeDataset;
+    }
+
     @SneakyThrows
     private Geometry getGeometryFromConfigByName(String name) {
         BoundariesProfile boundariesProfile = BoundariesConfig.getBoundariesProfile();
-        if (boundariesProfile.getBoundaryMap().containsKey(StringUtils.lowerCase(name))) {
-            String boundary = boundariesProfile.getBoundaryMap().get(StringUtils.lowerCase(name));
+        if (boundariesProfile.getBoundaryMap().containsKey(name)) {
+            String boundary = boundariesProfile.getBoundaryMap().get(name);
             WKTReader wktReader = new WKTReader();
             return wktReader.read(boundary);
         }
