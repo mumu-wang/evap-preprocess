@@ -21,7 +21,7 @@ public class OtonomoGroupedTest {
 
     private long filterNodesByCityName(String cityName, long StartID) {
         OtonomoGrouped grouped = new OtonomoGrouped(
-                "file:///d:/ev_data/otonomo_raw_data/*.csv",
+                "D:\\ev_data\\otonomo_raw_sample_data\\part-00000-6453e5b1-0955-4c6d-895a-e75456da2d98-c000.csv",
                 "file:///d:/ev_data/" + cityName);
         return grouped.handleOtonomoData(35000000000L, 1, cityName);
     }
