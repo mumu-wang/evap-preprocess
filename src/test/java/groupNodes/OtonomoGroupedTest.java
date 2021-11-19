@@ -15,7 +15,7 @@ public class OtonomoGroupedTest {
                 , "Seattle;Washington", "San Francisco;California", "Honolulu;Hawaii", "Atlanta;Georgia", "Los Angeles;California"};
         String[] flatLandsCities = new String[]{"Miami;Florida", "Chicago;Illinois", "Fresno;California"
                 , "Sacramento;California", "Jacksonville;Florida", "Virginia Beach;Virginia", "Long Beach;California",
-                "Detroit;Michigan", "Wichita;Kansas", "Houston;Texas", "Dallas;Pennsylvania", "New York; "};
+                "Detroit;Michigan", "Wichita;Kansas", "Houston;Texas", "Dallas;Pennsylvania", "New York;New York"};
 
         long idOffset = 0;
         for (String cityName : mountainCities) {
@@ -34,4 +34,6 @@ public class OtonomoGroupedTest {
         OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath + StringUtils.strip(cityState[0]));
         return grouped.filterOtonomoDataByCityName(StartID, 1, StringUtils.strip(cityState[0]), StringUtils.strip(cityState[1]));
     }
+
+
 }
