@@ -1,28 +1,37 @@
 package groupNodes;
 
+import org.apache.commons.lang.StringUtils;
 import org.junit.Test;
-
-import java.util.stream.Stream;
 
 public class OtonomoGroupedTest {
 
     @Test
-    public void handleOtonomoData() {
+    public void filterOtonomoDataByCityName() {
+        long startId = 35000000000L;
         int slot = 10;
-        String[] mountainCities = new String[]{"Portland", "San Diego", "Kansas City"
-                , "Seattle", "San Francisco", "Honolulu", "Atlanta", "Los Angeles"};
+        String inputPath = "file:///d:/ev_data/otonomo_raw_data/*.csv";
+        String outputPath = "file:///d:/ev_data/";
+        String[] mountainCities = new String[]{"Portland;Oregon", "San Diego;California", "Kansas City;Missouri"
+                , "Seattle;Washington", "San Francisco;California", "Honolulu;Hawaii", "Atlanta;Georgia", "Los Angeles;California"};
+        String[] flatLandsCities = new String[]{"Miami;Florida", "Chicago;Illinois", "Fresno;California"
+                , "Sacramento;California", "Jacksonville;Florida", "Virginia Beach;Virginia", "Long Beach;California",
+                "Detroit;Michigan", "Wichita;Kansas", "Houston;Texas", "Dallas;Pennsylvania", "New York; "};
+
         long idOffset = 0;
         for (String cityName : mountainCities) {
-            long offset = filterNodesByCityName(cityName, idOffset + 35000000000L);
+            long offset = filterNodesByCityName(cityName, idOffset + startId, inputPath, outputPath);
+            idOffset += (offset + slot);
+        }
+        for (String cityName : flatLandsCities) {
+            long offset = filterNodesByCityName(cityName, idOffset + startId, inputPath, outputPath);
             idOffset += (offset + slot);
         }
 
     }
 
-    private long filterNodesByCityName(String cityName, long StartID) {
-        OtonomoGrouped grouped = new OtonomoGrouped(
-                "file:///d:/ev_data/otonomo_raw_data/*.csv",
-                "file:///d:/ev_data/" + cityName);
-        return grouped.handleOtonomoData(35000000000L, 1, cityName);
+    private long filterNodesByCityName(String cityStateName, long StartID, String inputPath, String outputPath) {
+        String[] cityState = cityStateName.split(";");
+        OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath + StringUtils.strip(cityState[0]));
+        return grouped.filterOtonomoDataByCityName(StartID, 1, StringUtils.strip(cityState[0]), StringUtils.strip(cityState[1]));
     }
 }

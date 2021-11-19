@@ -29,6 +29,7 @@ public class OtonomoGrouped implements Serializable {
     private static final String LAT_FIELD = "location__latitude__value";
     private static final String LON_FIELD = "location__longitude__value";
     private static final String LOCATION_CITY_NAME_FILED = "location__city__name";
+    private static final String LOCATION_STATE_NAME_FILED = "location__state__name";
     private final String inputPath;
     private final String outputPath;
 
@@ -37,14 +38,14 @@ public class OtonomoGrouped implements Serializable {
         this.outputPath = outputPath;
     }
 
-    public long handleOtonomoData(long startID, int splitSize, String filterName) {
+    public long filterOtonomoDataByCityName(long startID, int splitSize, String filterName, String stateName) {
         // 1.active spark environment
         SparkSession sparkSession = SparkSession.builder().master("local[*]").appName("handle data").getOrCreate();
         // 2.read otonomo csv file
         Dataset<Row> csvData = sparkSession.read().format("csv").option("header", "true").load(inputPath);
         // 3.1 filter nodes by geometry
 //        Dataset<Row> nodeDataset = filterNodesByGeometry(csvData, filterName);
-        Dataset<Row> nodeDataset = filerNodesByCityName(csvData, filterName);
+        Dataset<Row> nodeDataset = filerNodesByCityName(csvData, filterName, stateName);
         // 3.2 add node id
         nodeDataset = addNodeID(nodeDataset, startID);
         // 3.3 group node by vehicle id
@@ -98,10 +99,11 @@ public class OtonomoGrouped implements Serializable {
         return nodeDataset;
     }
 
-    private Dataset<Row> filerNodesByCityName(Dataset<Row> nodeDataset, String cityName){
+    private Dataset<Row> filerNodesByCityName(Dataset<Row> nodeDataset, String cityName, String stateName) {
         nodeDataset = nodeDataset.filter(x -> {
             String locationCity = StringUtils.strip((String) x.get(x.fieldIndex(LOCATION_CITY_NAME_FILED)));
-            return StringUtils.endsWithIgnoreCase(locationCity, cityName);
+            String locationState = StringUtils.strip((String) x.get(x.fieldIndex(LOCATION_STATE_NAME_FILED)));
+            return StringUtils.endsWithIgnoreCase(locationCity, cityName) && StringUtils.endsWithIgnoreCase(locationState, stateName);
         });
         return nodeDataset;
     }
