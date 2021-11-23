@@ -4,6 +4,7 @@ import boundary.BoundariesConfig;
 import boundary.BoundariesProfile;
 import lombok.SneakyThrows;
 import org.apache.commons.lang.StringUtils;
+import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.storage.StorageLevel;
 import org.locationtech.jts.geom.*;
 import org.apache.spark.sql.*;
@@ -100,7 +101,7 @@ public class OtonomoGrouped implements Serializable {
     }
 
     private Dataset<Row> filerNodesByCityName(Dataset<Row> nodeDataset, String cityName, String stateName) {
-        nodeDataset = nodeDataset.filter(x -> {
+        nodeDataset = nodeDataset.filter((FilterFunction<Row>) x -> {
             String locationCity = StringUtils.strip((String) x.get(x.fieldIndex(LOCATION_CITY_NAME_FILED)));
             String locationState = StringUtils.strip((String) x.get(x.fieldIndex(LOCATION_STATE_NAME_FILED)));
             return StringUtils.endsWithIgnoreCase(locationCity, cityName) && StringUtils.endsWithIgnoreCase(locationState, stateName);
@@ -130,7 +131,7 @@ public class OtonomoGrouped implements Serializable {
     }
 
     private Dataset<Row> filterDataByGeom(Dataset<Row> nodeDataset, Geometry polygon) {
-        nodeDataset = nodeDataset.filter(x -> {
+        nodeDataset = nodeDataset.filter((FilterFunction<Row>) x -> {
             String lat = (String) x.get(x.fieldIndex(LAT_FIELD));
             String lon = (String) x.get(x.fieldIndex(LON_FIELD));
             if (lat != null && lon != null && isValidLatLon(lat, lon)) {
