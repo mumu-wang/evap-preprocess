@@ -7,6 +7,8 @@ It could
 2. group data by vehicle
 3. filter nodes by geometry
 4. filter nodes by city name
+5. do city distribution analysis
+6. do city check with special polygon
 
 command example:
 

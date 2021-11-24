@@ -60,6 +60,20 @@ public class OtonomoGrouped implements Serializable {
         return nodeSize;
     }
 
+    public void cityDistributionInOtonomo(){
+        // 1.active spark environment
+        SparkSession sparkSession = SparkSession.builder().master("local[*]").appName("handle data").getOrCreate();
+        // 2.read otonomo csv file
+        Dataset<Row> csvData = sparkSession.read().format("csv").option("header", "true").load(inputPath);
+        doCityDistribution(csvData);
+        sparkSession.close();
+    }
+
+    private void doCityDistribution(Dataset<Row> csvData){
+        Dataset<Row> countDataset = csvData.groupBy(LOCATION_CITY_NAME_FILED).count();
+        countDataset.sort(desc("count")).coalesce(1).write().mode(SaveMode.Overwrite).option("header", "true").csv(outputPath);
+    }
+
     /**
      * @param nodeDataset
      * @param startID,    node start ID
