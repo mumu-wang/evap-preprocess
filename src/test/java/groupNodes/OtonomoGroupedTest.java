@@ -15,7 +15,7 @@ public class OtonomoGroupedTest {
                 , "Seattle;Washington", "San Francisco;California", "Honolulu;Hawaii", "Atlanta;Georgia", "Los Angeles;California"};
         String[] flatLandsCities = new String[]{"Miami;Florida", "Chicago;Illinois", "Fresno;California"
                 , "Sacramento;California", "Jacksonville;Florida", "Virginia Beach;Virginia", "Long Beach;California",
-                "Detroit;Michigan", "Wichita;Kansas", "Houston;Texas", "Dallas;Pennsylvania", "New York City;New York"};
+                "Detroit;Michigan", "Wichita;Kansas", "Houston;Texas", "Dallas;Pennsylvania"};
 
         long idOffset = 0;
         for (String cityName : mountainCities) {
