@@ -58,12 +58,38 @@ public class OtonomoGroupedTest {
     }
 
     @Test
+    public void groupedDataWithNodeIDTest() {
+        String inputPath = "file:///d:/ev_data/otonomo_raw_data/*.csv";
+        String outputPath = "file:///d:/ev_data/otnomo_data_grouped_by_id/grouped_data/split10";
+        OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath);
+        grouped.groupedDataWithNodeID(2, 10);
+
+    }
+
+    @Test
     public void cityDistributionInOtonomoTest() {
         String inputPath = "file:///d:/ev_data/otonomo_raw_data/*.csv";
         String outputPath = "file:///d:/ev_data/city_distribution/output";
         OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath);
         grouped.cityDistributionInOtonomo();
+    }
 
+    @Test
+    public void vehicleDistinctInOtonomoTest() {
+        String inputPath = "file:///d:/ev_data/otonomo_raw_data/*.csv";
+        String outputPath = "";
+        OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath);
+        long vehicles = grouped.vehicleDistinctInOtonomo();
+        System.out.println("distinct vehicle size is " + vehicles);
+    }
+
+
+    @Test
+    public void doColumnsCoverageTest() {
+        String inputPath = "file:///d:/ev_data/otonomo_raw_data/*.csv";
+        String outputPath = "";
+        OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath);
+        grouped.columnsCoverageInOtonomo();
     }
 
 }

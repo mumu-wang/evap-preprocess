@@ -6,6 +6,7 @@ import lombok.SneakyThrows;
 import org.apache.commons.lang.StringUtils;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.storage.StorageLevel;
+import org.apache.spark.util.LongAccumulator;
 import org.locationtech.jts.geom.*;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.expressions.Window;
@@ -14,6 +15,8 @@ import org.locationtech.jts.io.WKTReader;
 
 
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.HashMap;
 
 import static org.apache.spark.sql.functions.*;
 import static org.apache.spark.sql.functions.monotonically_increasing_id;
@@ -27,16 +30,50 @@ import static org.apache.spark.sql.functions.monotonically_increasing_id;
 public class OtonomoGrouped implements Serializable {
 
     private static final String VEHICLE_ID = "vehicle__identification__otonomo_id";
+    private static final String METADATA_TIME = "metadata__time__epoch";
+    private static final String COUNTRY_CODE = "location__country__code";
+    private static final String LOCATION_CITY_NAME_FILED = "location__city__name";
     private static final String LAT_FIELD = "location__latitude__value";
     private static final String LON_FIELD = "location__longitude__value";
-    private static final String LOCATION_CITY_NAME_FILED = "location__city__name";
+    private static final String HEADING_ANGLE = "mobility__heading__angle";
+    private static final String SPEED_VALUE = "mobility__speed__value";
+    private static final String METADATA_NAME = "metadata__provider__name";
     private static final String LOCATION_STATE_NAME_FILED = "location__state__name";
+    private static final String BATTERY_VOLTAGE = "vehicle__hv_battery__voltage";
+    private static final String BATTERY_CHARGING_DURATION = "vehicle__hv_battery__charging_duration";
+    private static final String BATTERY_ENERGY = "vehicle__hv_battery__energy";
+    private static final String FUEL_TYPE = "manufacturer__fuel__type";
+    private static final String BATTERY_TEMPERATURE = "vehicle__hv_battery__temperature";
+    private static final String BATTERY_CAPACITY = "manufacturer__hv_battery__capacity";
+
     private final String inputPath;
     private final String outputPath;
+
+    private String[] columns = new String[]{VEHICLE_ID, METADATA_TIME, COUNTRY_CODE, LOCATION_CITY_NAME_FILED, LAT_FIELD,
+            LON_FIELD, HEADING_ANGLE, SPEED_VALUE, METADATA_NAME, LOCATION_STATE_NAME_FILED, BATTERY_VOLTAGE,
+            BATTERY_CHARGING_DURATION, BATTERY_ENERGY, FUEL_TYPE, BATTERY_TEMPERATURE, BATTERY_CAPACITY};
 
     public OtonomoGrouped(String inputPath, String outputPath) {
         this.inputPath = inputPath;
         this.outputPath = outputPath;
+    }
+
+    public long groupedDataWithNodeID(long startID, int splitSize) {
+        // 1.active spark environment
+        SparkSession sparkSession = SparkSession.builder().master("local[*]").appName("handle data").getOrCreate();
+        // 2.read otonomo csv file
+        Dataset<Row> csvData = sparkSession.read().format("csv").option("header", "true").load(inputPath);
+        // 3.1 add node id
+        Dataset<Row> nodeDataset = addNodeID(csvData, startID);
+        // 3.2 group node by vehicle id
+        nodeDataset = groupDataByVehicle(nodeDataset, splitSize);
+        // 4.write result file
+        nodeDataset.persist(StorageLevel.DISK_ONLY());
+        nodeDataset.write().mode(SaveMode.Overwrite).option("header", "true").csv(outputPath);
+        long nodeSize = nodeDataset.count();
+        // 5.deactive spark environment
+        sparkSession.close();
+        return nodeSize;
     }
 
     public long filterOtonomoDataByCityName(long startID, int splitSize, String filterName, String stateName) {
@@ -60,7 +97,7 @@ public class OtonomoGrouped implements Serializable {
         return nodeSize;
     }
 
-    public void cityDistributionInOtonomo(){
+    public void cityDistributionInOtonomo() {
         // 1.active spark environment
         SparkSession sparkSession = SparkSession.builder().master("local[*]").appName("handle data").getOrCreate();
         // 2.read otonomo csv file
@@ -69,9 +106,55 @@ public class OtonomoGrouped implements Serializable {
         sparkSession.close();
     }
 
-    private void doCityDistribution(Dataset<Row> csvData){
+    private void doCityDistribution(Dataset<Row> csvData) {
         Dataset<Row> countDataset = csvData.groupBy(LOCATION_CITY_NAME_FILED).count();
         countDataset.sort(desc("count")).coalesce(1).write().mode(SaveMode.Overwrite).option("header", "true").csv(outputPath);
+    }
+
+    public long vehicleDistinctInOtonomo() {
+        // 1.active spark environment
+        SparkSession sparkSession = SparkSession.builder().master("local[*]").appName("handle data").getOrCreate();
+        // 2.read otonomo csv file
+        Dataset<Row> csvData = sparkSession.read().format("csv").option("header", "true").load(inputPath);
+        long vehicles = doVehicleDistinct(csvData);
+        sparkSession.close();
+        return vehicles;
+    }
+
+    private long doVehicleDistinct(Dataset<Row> csvData) {
+        return csvData.select(col(VEHICLE_ID)).distinct().count();
+    }
+
+
+    public void columnsCoverageInOtonomo() {
+        // 1.active spark environment
+        SparkSession sparkSession = SparkSession.builder().master("local[*]").appName("handle data").getOrCreate();
+        // 2.read otonomo csv file
+        Dataset<Row> csvData = sparkSession.read().format("csv").option("header", "true").load(inputPath);
+        doColumnsCoverage(csvData);
+        sparkSession.close();
+    }
+
+    private void doColumnsCoverage(Dataset<Row> csvData) {
+        SparkSession sparkSession = SparkSession.getActiveSession().get();
+        HashMap<String, LongAccumulator> accumulatorHashMap = new HashMap<>();
+
+        Arrays.stream(columns).forEach(x -> {
+            LongAccumulator accum = sparkSession.sparkContext().longAccumulator();
+            accumulatorHashMap.put(x, accum);
+        });
+
+        csvData = csvData.map(x -> {
+            for (String column : columns) {
+                if (StringUtils.isNotEmpty((String) x.get(x.fieldIndex(column)))) {
+                    accumulatorHashMap.get(column).add(1);
+                }
+            }
+            return x;
+        }, Encoders.bean(Row.class));
+        long dataSize = csvData.count();
+        Arrays.stream(columns).forEach(x -> System.out.println(x + ": " + (accumulatorHashMap.get(x).value() * 100.0 / dataSize)));
+
     }
 
     /**
