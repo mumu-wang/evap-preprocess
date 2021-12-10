@@ -5,6 +5,8 @@ import boundary.BoundariesProfile;
 import lombok.SneakyThrows;
 import org.apache.commons.lang.StringUtils;
 import org.apache.spark.api.java.function.FilterFunction;
+import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.util.LongAccumulator;
 import org.locationtech.jts.geom.*;
@@ -27,7 +29,7 @@ import static org.apache.spark.sql.functions.monotonically_increasing_id;
  * @author: Lin.Wang
  * @create: 2021-11-10 15:42
  **/
-public class OtonomoGrouped implements Serializable {
+public class OtonomoDataHandled implements Serializable {
 
     private static final String VEHICLE_ID = "vehicle__identification__otonomo_id";
     private static final String METADATA_TIME = "metadata__time__epoch";
@@ -53,7 +55,7 @@ public class OtonomoGrouped implements Serializable {
             LON_FIELD, HEADING_ANGLE, SPEED_VALUE, METADATA_NAME, LOCATION_STATE_NAME_FILED, BATTERY_VOLTAGE,
             BATTERY_CHARGING_DURATION, BATTERY_ENERGY, FUEL_TYPE, BATTERY_TEMPERATURE, BATTERY_CAPACITY};
 
-    public OtonomoGrouped(String inputPath, String outputPath) {
+    public OtonomoDataHandled(String inputPath, String outputPath) {
         this.inputPath = inputPath;
         this.outputPath = outputPath;
     }
@@ -155,6 +157,37 @@ public class OtonomoGrouped implements Serializable {
         long dataSize = csvData.count();
         Arrays.stream(columns).forEach(x -> System.out.println(x + ": " + (accumulatorHashMap.get(x).value() * 100.0 / dataSize)));
 
+    }
+
+    public void batteryTemperatureRangeInOtonomo() {
+        // 1.active spark environment
+        SparkSession sparkSession = SparkSession.builder().master("local[*]").appName("handle data").getOrCreate();
+        // 2.read otonomo csv file
+        Dataset<Row> csvData = sparkSession.read().format("csv").option("header", "true").load(inputPath);
+        doBatteryTemperatureRange(csvData);
+        sparkSession.close();
+    }
+
+    private void doBatteryTemperatureRange(Dataset<Row> csvData) {
+        csvData = csvData.filter(x -> StringUtils.isNotEmpty((String) x.get(x.fieldIndex(BATTERY_TEMPERATURE))));
+        csvData = csvData.withColumn(BATTERY_TEMPERATURE, col(BATTERY_TEMPERATURE).cast(DataTypes.IntegerType));
+        csvData.describe(BATTERY_TEMPERATURE).show();
+    }
+
+    public void otonomoTripSimplify(){
+        // 1.active spark environment
+        SparkSession sparkSession = SparkSession.builder().master("local[*]").appName("handle data").getOrCreate();
+        // 2.read otonomo csv file
+        Dataset<Row> csvData = sparkSession.read().format("csv").option("header", "true").load(inputPath);
+        doOtonomoTripSimplify(csvData);
+        sparkSession.close();
+    }
+
+    private void doOtonomoTripSimplify(Dataset<Row> csvData) {
+        csvData = csvData.drop("linestring").drop("traffic_count").drop("intersection_count");
+        csvData = csvData.withColumn("ways_id_temp",lit(col("ways_id").substr(0,10))); //todo, need optimization
+        csvData = csvData.drop("ways_id").withColumn("ways_id", col("ways_id_temp")).drop("ways_id_temp");
+        csvData.repartition(1).write().mode(SaveMode.Overwrite).option("header", "true").csv(outputPath);
     }
 
     /**

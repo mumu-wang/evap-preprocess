@@ -1,9 +1,12 @@
 package groupNodes;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SaveMode;
 import org.junit.Test;
 
-public class OtonomoGroupedTest {
+public class OtonomoDataHandledTest {
 
     @Test
     public void filterOtonomoDataByCityNameFirstBatch() {
@@ -53,7 +56,7 @@ public class OtonomoGroupedTest {
 
     private long filterNodesByCityName(String cityStateName, long StartID, String inputPath, String outputPath) {
         String[] cityState = cityStateName.split(";");
-        OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath + StringUtils.strip(cityState[0]));
+        OtonomoDataHandled grouped = new OtonomoDataHandled(inputPath, outputPath + StringUtils.strip(cityState[0]));
         return grouped.filterOtonomoDataByCityName(StartID, 1, StringUtils.strip(cityState[0]), StringUtils.strip(cityState[1]));
     }
 
@@ -61,7 +64,7 @@ public class OtonomoGroupedTest {
     public void groupedDataWithNodeIDTest() {
         String inputPath = "file:///d:/ev_data/otonomo_raw_data/*.csv";
         String outputPath = "file:///d:/ev_data/otnomo_data_grouped_by_id/grouped_data/split10";
-        OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath);
+        OtonomoDataHandled grouped = new OtonomoDataHandled(inputPath, outputPath);
         grouped.groupedDataWithNodeID(2, 10);
 
     }
@@ -70,7 +73,7 @@ public class OtonomoGroupedTest {
     public void cityDistributionInOtonomoTest() {
         String inputPath = "file:///d:/ev_data/otonomo_raw_data/*.csv";
         String outputPath = "file:///d:/ev_data/city_distribution/output";
-        OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath);
+        OtonomoDataHandled grouped = new OtonomoDataHandled(inputPath, outputPath);
         grouped.cityDistributionInOtonomo();
     }
 
@@ -78,7 +81,7 @@ public class OtonomoGroupedTest {
     public void vehicleDistinctInOtonomoTest() {
         String inputPath = "file:///d:/ev_data/otonomo_raw_data/*.csv";
         String outputPath = "";
-        OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath);
+        OtonomoDataHandled grouped = new OtonomoDataHandled(inputPath, outputPath);
         long vehicles = grouped.vehicleDistinctInOtonomo();
         System.out.println("distinct vehicle size is " + vehicles);
     }
@@ -88,8 +91,26 @@ public class OtonomoGroupedTest {
     public void doColumnsCoverageTest() {
         String inputPath = "file:///d:/ev_data/otonomo_raw_data/*.csv";
         String outputPath = "";
-        OtonomoGrouped grouped = new OtonomoGrouped(inputPath, outputPath);
+        OtonomoDataHandled grouped = new OtonomoDataHandled(inputPath, outputPath);
         grouped.columnsCoverageInOtonomo();
+    }
+
+    @Test
+    public void batteryTemperatureRangeInOtonomoTest(){
+//        String inputPath = "file:///d:/ev_data/otonomo_raw_sample_data/part_data/*.csv";
+        String inputPath = "file:///d:/ev_data/otonomo_raw_data/*.csv";
+        String outputPath = "";
+        OtonomoDataHandled grouped = new OtonomoDataHandled(inputPath, outputPath);
+        grouped.batteryTemperatureRangeInOtonomo();
+    }
+
+    @Test
+    public void otonomoTripSimplify(){
+//        String inputPath = "file:///d:/ev_data/otonomo_trip/sample/trip/*.csv";
+        String inputPath = "file:///d:/ev_data/otonomo_trip/entire/trip/*.csv";
+        String outputPath = "file:///d:/ev_data/otonomo_trip/entire/out";
+        OtonomoDataHandled dataHandled = new OtonomoDataHandled(inputPath, outputPath);
+        dataHandled.otonomoTripSimplify();
     }
 
 }
